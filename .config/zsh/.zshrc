@@ -196,9 +196,9 @@ echo -ne '\e[5 q' # Use beam shape cursor on startup.
 HISTSIZE=1000
 SAVEHIST=10000
 
-# Apply pywal to new terminals
-(cat ~/.cache/wal/sequences &)
-source ~/.cache/wal/colors-tty.sh # <<--- suppport for TTYs
+# Apply pywal to new terminals (only if pywal has generated a scheme)
+[ -f ~/.cache/wal/sequences ] && (cat ~/.cache/wal/sequences &)
+[ -f ~/.cache/wal/colors-tty.sh ] && source ~/.cache/wal/colors-tty.sh # <<--- suppport for TTYs
 # echo " "
 # neofetch
 
