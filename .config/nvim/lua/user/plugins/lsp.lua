@@ -79,31 +79,40 @@ return {
                 end, { desc = 'Format current buffer with LSP' })
                 nmap('<leader>f', ":Format<CR>", '[F]ormat document')
 
-                -- To instead override globally
-
-                -- local border = {
-                --   { "🭽", "FloatBorder" },
-                --   { "▔", "FloatBorder" },
-                --   { "🭾", "FloatBorder" },
-                --   { "▕", "FloatBorder" },
-                --   { "🭿", "FloatBorder" },
-                --   { "▁", "FloatBorder" },
-                --   { "🭼", "FloatBorder" },
-                --   { "▏", "FloatBorder" },
-                -- }
-                local border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" }
-                local orig_util_open_floating_preview = vim.lsp.util.open_floating_preview
-                ---@diagnostic disable-next-line: duplicate-set-field
-                function vim.lsp.util.open_floating_preview(contents, syntax, opts, ...)
-                    opts = opts or {}
-                    opts.border = opts.border or border
-                    return orig_util_open_floating_preview(contents, syntax, opts, ...)
-                end
             end
+
+            -- To instead override globally
+            -- NOTE: hoisted out of on_attach so the wrapper is applied once,
+            -- rather than re-wrapped on every LSP attach.
+
+            -- local border = {
+            --   { "🭽", "FloatBorder" },
+            --   { "▔", "FloatBorder" },
+            --   { "🭾", "FloatBorder" },
+            --   { "▕", "FloatBorder" },
+            --   { "🭿", "FloatBorder" },
+            --   { "▁", "FloatBorder" },
+            --   { "🭼", "FloatBorder" },
+            --   { "▏", "FloatBorder" },
+            -- }
+            local border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" }
+            local orig_util_open_floating_preview = vim.lsp.util.open_floating_preview
+            ---@diagnostic disable-next-line: duplicate-set-field
+            function vim.lsp.util.open_floating_preview(contents, syntax, opts, ...)
+                opts = opts or {}
+                opts.border = opts.border or border
+                return orig_util_open_floating_preview(contents, syntax, opts, ...)
+            end
+
+            -- on_attach is no longer passed per-server; LspAttach drives it.
+            vim.api.nvim_create_autocmd('LspAttach', {
+                callback = function(args)
+                    on_attach(vim.lsp.get_client_by_id(args.data.client_id), args.buf)
+                end,
+            })
 
 
             require('mason').setup()
-            require('mason-lspconfig').setup()
 
             local servers = {
                 -- clangd = {},
@@ -129,18 +138,22 @@ return {
             local capabilities = vim.lsp.protocol.make_client_capabilities()
             capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
-            -- Ensure the servers above are installed
-            local mason_lspconfig = require 'mason-lspconfig'
-            mason_lspconfig.setup { ensure_installed = vim.tbl_keys(servers) }
-            mason_lspconfig.setup_handlers {
-                function(server_name)
-                    require('lspconfig')[server_name].setup {
-                        capabilities = capabilities,
-                        on_attach = on_attach,
-                        settings = servers[server_name],
-                        filetypes = (servers[server_name] or {}).filetypes,
-                    }
-                end,
+            -- mason-lspconfig v2 removed setup_handlers. Servers are configured
+            -- through vim.lsp.config and switched on by `automatic_enable`.
+            vim.lsp.config('*', { capabilities = capabilities })
+
+            for server_name, settings in pairs(servers) do
+                vim.lsp.config(server_name, {
+                    capabilities = capabilities,
+                    settings = settings,
+                    filetypes = (settings or {}).filetypes,
+                })
+            end
+
+            -- Ensure the servers above are installed, then enable them
+            require('mason-lspconfig').setup {
+                ensure_installed = vim.tbl_keys(servers),
+                automatic_enable = true,
             }
         end
     },
