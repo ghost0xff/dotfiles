@@ -3,7 +3,12 @@
 return {
   {
     'nvim-telescope/telescope.nvim',
-    branch = '0.1.x',
+    -- 0.1.x (May 2024) calls the old nvim-treesitter module API
+    -- (`parsers.ft_to_lang`, `configs.is_enabled`), which the `main`-branch
+    -- treesitter rewrite removed -- see treesitter.lua. master dropped the
+    -- nvim-treesitter dependency entirely and uses Neovim's own
+    -- vim.treesitter.language.get_lang() + vim.treesitter.start().
+    branch = 'master',
     dependencies = {
       'nvim-lua/plenary.nvim',
       {
